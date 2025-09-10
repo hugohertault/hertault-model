@@ -1,81 +1,54 @@
-# hertault-model
-HCM Theory 
-```markdown
-# Hertault Model: Unified Dark Sector
+# hertault-model (HCM) 
+# 🌌 Hertault Model: Dark Sector Unification at the Cosmological Critical Density
 
-[![Paper](https://img.shields.io/badge/arXiv-2509.XXXXX-b31b1b.svg)](https://arxiv.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+![Hertault Model Results](figures/hertault_main_results.png)
 
-> **"Dark Sector Unification at the Cosmological Critical Density"**  
-> Hugo Hertault (2025)
+Welcome to the official repository for the paper **"Dark Sector Unification at the Cosmological Critical Density"** by Hugo Hertault (Lille, France, September 2025). This repository contains the complete numerical simulation suite that produced the results presented in the paper, proposing a novel unified theory where dark matter and dark energy emerge from a single scalar field φ with environment-dependent dynamics.
 
-## 🌌 Overview
+## 📝 Overview
 
-This repository contains the complete numerical simulation suite for the **Hertault model** - a unified theory of dark matter and dark energy based on environment-dependent scalar field dynamics.
+The Hertault model introduces a scalar field φ that undergoes a natural phase transition at the cosmological critical density \( \rho_c \approx 3.64 \times 10^{-47} \, \text{GeV}^4 \), behaving as:
+- **Dark Matter** (\( \langle w_\phi \rangle \simeq 0 \)) at high density (\( \rho_m \gg \rho_c \)).
+- **Dark Energy** (\( w_\phi \simeq -1 \)) at low density (\( \rho_m \ll \rho_c \)).
 
-### ✨ Key Achievements
+### Key Achievements
+- **Resolves the cosmic coincidence problem** without fine-tuning, with a transition at \( z_{\text{trans}} \approx 0.45 \).
+- **Reduces cosmological tensions**:
+  - **H₀ tension**: 60% reduction (from 5.4σ to 2.1σ).
+  - **σ₈ tension**: 50% reduction (from 2.6σ to 1.3σ).
+- **Addresses the neutrino mass puzzle** through environment-dependent neutrino masses.
+- **Satisfies all experimental constraints** with a universal coupling \( \alpha = 7.8 \times 10^{-4} \).
+- **Predicts testable signatures** for DESI, Euclid, Einstein Telescope, and MICROSCOPE-2.
 
-- ✅ **60% reduction** in H₀ tension (5.4σ → 2.1σ)
-- ✅ **50% reduction** in σ₈ tension (2.6σ → 1.3σ)  
-- ✅ **Natural resolution** of coincidence problem (no fine-tuning)
-- ✅ **All experimental constraints** satisfied (α = 7.8×10⁻⁴)
+The code is designed to be accessible, modular, and reproducible, with publication-quality figures and validation tests.
 
-## 🚀 Quick Start
+## 🚀 Features
 
-```bash
-# Clone repository
-git clone https://github.com/hugohertault/hertault-model.git
-cd hertault-model
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run complete analysis
-python main.py
-```
+- **HertaultField**: Implements the scalar field with an environment-dependent potential and universal coupling.
+- **CosmologicalEvolution**: Solves the coupled field-Friedmann equations for background evolution.
+- **PerturbationEvolution**: Computes linear perturbations and modified growth factor.
+- **ObservationalConstraints**: Analyzes cosmological tensions (H₀, σ₈) against Planck, SH0ES, KiDS, and DES data.
+- **ParameterOptimization**: Optimizes model parameters using differential evolution.
+- **Publication Figures**: Generates high-quality plots, including phase diagrams, field evolution, Hubble parameter evolution, and tension reduction.
 
 ## 📊 Key Results
 
-| Observable | ΛCDM | Hertault | Improvement |
-|------------|------|----------|-------------|
-| **H₀ Tension** | 5.4σ | 2.1σ | **61%** |
-| **σ₈ Tension** | 2.6σ | 1.3σ | **50%** |
+- **H₀ Prediction**: \( 69.8 \pm 1.2 \, \text{km/s/Mpc} \)
+- **σ₈ Prediction**: \( 0.789 \pm 0.011 \)
+- **Transition Redshift**: \( z_{\text{trans}} \approx 0.45 \pm 0.05 \)
+- **Equation of State**: \( w_\phi(z=0) \approx -0.97 \pm 0.02 \)
+- **Tension Reductions**:
+  - H₀: Reduced from 5.4σ to 2.1σ (61% improvement).
+  - σ₈: Reduced from 2.6σ to 1.3σ (50% improvement).
+- **Experimental Constraints**:
+  - Fifth force: \( \alpha < 10^{-3} \) ✓
+  - Equivalence principle (MICROSCOPE): \( \eta < 10^{-13} \) ✓
+  - Gravitational wave speed: \( |c_{\text{gw}} - c|/c < 10^{-15} \) ✓
+  - Stellar cooling: \( \alpha < 5 \times 10^{-3} \) ✓
 
-**Optimized Parameters:**
-- Universal coupling: **α = 7.8×10⁻⁴** 
-- Mass scale: **Δm² = 2.3×10⁻⁴⁷ GeV²**
-- Transition redshift: **z = 0.45**
+## 🛠 Installation
 
-## 🔬 Physics
-
-The Hertault field φ undergoes a natural phase transition at the cosmological critical density ρc = 3H₀²M²ₚₗ/(8π), transitioning from dark matter behavior at high densities to dark energy behavior at low densities.
-
-**Key insight:** The transition occurs inevitably when cosmic density drops through ρc during expansion - resolving the coincidence problem without fine-tuning.
-
-## 📈 Future Tests
-
-- **DESI (2024-29):** BAO/RSD modifications
-- **Euclid (2024-30):** Weak lensing signatures  
-- **Einstein Telescope (2030+):** Gravitational wave dipole radiation
-
-## 📚 Citation
-
-```bibtex
-@article{Hertault2025,
-    title={Dark Sector Unification at the Cosmological Critical Density},
-    author={Hugo Hertault},
-    journal={arXiv preprint arXiv:2509.XXXXX},
-    year={2025}
-}
-```
-
-## 📞 Contact
-
-- **Author:** Hugo Hertault
-- **GitHub:** [@hugohertault](https://github.com/hugohertault)
-
----
-
-> *"The critical density ρc is not a parameter to be fitted, but an inevitable consequence of Einstein's equations."* - H. Hertault (2025)
-```
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/hugohertault/hertault-model.git
+   cd hertault-model
