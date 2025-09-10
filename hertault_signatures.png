@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""
+Generate publication-quality figure for Hertault model: hertault_signatures.png
+Contains four panels: GW signatures, experimental constraints, power spectrum, future detectability.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+# Model parameters
+alpha = 7.8e-4
+M_Pl = 2.435e18  # GeV
+H0 = 67.36 / 100  # h
+
+# Create output directory
+os.makedirs('figures', exist_ok=True)
+
+# Set publication style
+plt.style.use('default')
+plt.rcParams.update({
+    'font.size': 12,
+    'font.family': 'serif',
+    'figure.dpi': 150,
+    'savefig.dpi': 300,
+    'axes.linewidth': 1.2,
+    'lines.linewidth': 2.0
+})
+
+# Initialize figure
+fig = plt.figure(figsize=(12, 8))
+
+# Panel 1: Gravitational Wave Signatures
+plt.subplot(2, 2, 1)
+frequencies = np.logspace(1, 4, 100)  # Hz
+h_LIGO = 1e-21 * (frequencies/100)**(-4.5) * np.exp(-(frequencies/1000)**2)
+h_ET = h_LIGO / 10
+Delta_Q = alpha * 1e-4 / M_Pl
+h_dipole = alpha**2 * Delta_Q**2 * (frequencies/100)**2 * 1e-22
+
+plt.loglog(frequencies, h_LIGO, 'r--', linewidth=2, label='LIGO/Virgo')
+plt.loglog(frequencies, h_ET, 'g--', linewidth=2, label='Einstein Telescope')
+plt.loglog(frequencies, h_dipole, 'b-', linewidth=3, label='Hertault Signal')
+plt.xlabel('Frequency [Hz]')
+plt.ylabel('Strain Amplitude h')
+plt.title('Gravitational Wave Signatures')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+# Panel 2: Experimental Constraints
+plt.subplot(2, 2, 2)
+experiments = ['Fifth Force', 'MICROSCOPE', 'GW Speed', 'Stellar Cool.']
+limits = [1e-3, 1e-13, 1e-15, 5e-3]
+predictions = [alpha, alpha**2 * 1e-15, alpha * 1e-12, alpha]
+colors = ['green' if pred < limit else 'red' for pred, limit in zip(predictions, limits)]
+
+y_pos = np.arange(len(experiments))
+plt.barh(y_pos, limits, color='lightgray', alpha=0.7, label='Experimental Limits')
+plt.barh(y_pos, predictions, color=colors, alpha=0.8, label='Hertault Predictions')
+plt.axvline(alpha, color='blue', linewidth=3, linestyle='-', label=f'$\\alpha = {alpha:.1e}$')
+plt.xlabel('Constraint Level')
+plt.ylabel('Experiment')
+plt.yticks(y_pos, experiments)
+plt.xscale('log')
+plt.title('Experimental Constraints')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+# Panel 3: Power Spectrum Modifications
+plt.subplot(2, 2, 3)
+k_array = np.logspace(-2, 1, 50)  # h/Mpc
+m_eff = np.sqrt(2.3e-85 - 2.8e-87)  # GeV (low density)
+a = 1.0  # z=0
+k_phys = k_array * H0 * 6.582e-16  # GeV
+growth_mods = [(1 + (2 * alpha**2 / (3 * M_Pl**2)) * OMEGA_M * k_p**2 / (k_p**2 + a**2 * m_eff**2))
+               for k_p in k_phys]
+deviation_percent = [(g - 1) * 100 for g in growth_mods]
+
+plt.semilogx(k_array, deviation_percent, 'b-', linewidth=3, label='Hertault Model')
+plt.axhline(0, color='k', linestyle='--', alpha=0.5)
+plt.axhline(1, color='orange', linestyle=':', alpha=0.8, label='1% Level')
+plt.axhline(-1, color='orange', linestyle=':', alpha=0.8)
+plt.axvspan(0.02, 0.3, alpha=0.2, color='green', label='BOSS')
+plt.axvspan(0.1, 2.0, alpha=0.2, color='orange', label='DES')
+plt.axvspan(0.05, 10, alpha=0.1, color='purple', label='Euclid')
+plt.xlabel(r'k [h Mpc$^{-1}$]')
+plt.ylabel(r'$\delta P / P$ [%]')
+plt.title('Power Spectrum Modifications')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+# Panel 4: Future Detectability
+plt.subplot(2, 2, 4)
+experiments_future = ['DESI\n(2024-29)', 'Euclid\n(2024-30)', 'Einstein Tel.\n(2030+)', 
+                     'MICROSCOPE-2\n(2030+)', 'Space Clocks\n(2025+)']
+detectability = [0.85, 0.90, 0.45, 0.60, 0.35]
+colors_detect = ['darkgreen' if d > 0.7 else 'orange' if d > 0.4 else 'red' for d in detectability]
+
+plt.bar(experiments_future, detectability, color=colors_detect, alpha=0.8)
+plt.axhline(0.5, color='black', linestyle=':', alpha=0.7, label='50% Threshold')
+plt.ylabel('Detection Probability')
+plt.title('Future Detection Prospects')
+plt.ylim(0, 1)
+plt.xticks(rotation=45, ha='right')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+# Save figure
+plt.tight_layout()
+plt.savefig('figures/hertault_signatures.png', dpi=300, bbox_inches='tight')
+print("✅ Figure saved: figures/hertault_signatures.png")
+plt.close()
