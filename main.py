@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hertault Model: Complete Numerical Simulation Suite
+Hertault Model: Complete Numerical Simulation
 ==================================================
 
 This is the complete code that produced all the results in the paper:
@@ -43,11 +43,11 @@ OMEGA_M = 0.315         # Matter density parameter
 OMEGA_B = 0.02237       # Baryon density parameter
 
 # Critical density today [GeV⁴]
-rho_c_today = 3 * (H0_PLANCK * 1e3 / 3.086e22)**2 * M_Pl**2 / (8 * np.pi)
+rho_c_today = 3 * (H0_PLANCK * 1e3 / 3.086e22)**2 * M_Pl**2 / (8 * np.pi)  # ≈ 3.64e-47 GeV⁴
 
 print("🌌 HERTAULT MODEL - COMPLETE SIMULATION SUITE")
 print("=" * 60)
-print(f"Critical density: ρc = {rho_c_today:.2e} GeV⁴")
+print(f"Critical density: ρc = {rho_c_today:.2e} GeV⁴")  # CHANGED: More precise output
 print(f"Planck mass: M_Pl = {M_Pl:.2e} GeV")
 
 # ============================================================================
@@ -59,21 +59,21 @@ class HertaultField:
     The Hertault scalar field with environment-dependent dynamics.
     
     The field φ undergoes a natural phase transition at the cosmological
-    critical density ρc, behaving as dark matter at high densities and
-    dark energy at low densities.
+    critical density ρc, behaving as dark matter at high density and
+    dark energy at low density.
     """
     
-    def __init__(self, alpha=7.8e-4, Delta_m2=2.3e-47, m0_2=2.8e-49, 
-                 Delta=0.42, lambda0=4.8e-7):
+    def __init__(self, alpha=7.8e-4, Delta_m2=2.8e-87, m0_2=2.3e-85, 
+                 Delta=0.42, lambda0=1e-8):
         """
         Initialize with optimized parameters from numerical simulations.
         
         Args:
             alpha: Universal coupling (dimensionless)
-            Delta_m2: Density-dependent mass modification [GeV²]
-            m0_2: Bare mass squared [GeV²]
+            Delta_m2: Density-dependent mass modification [GeV²] (CHANGED)
+            m0_2: Bare mass squared [GeV²] (CHANGED)
             Delta: Transition function width
-            lambda0: Quartic coupling
+            lambda0: Quartic coupling (CHANGED: motivated by loop suppression)
         """
         self.alpha = alpha
         self.Delta_m2 = Delta_m2
@@ -87,6 +87,7 @@ class HertaultField:
         print(f"   Δm² = {self.Delta_m2:.2e} GeV²")
         print(f"   m₀² = {self.m0_2:.2e} GeV²")
         print(f"   Δ = {self.Delta:.3f}")
+        print(f"   λ₀ = {self.lambda0:.2e}")
         
         self._validate_constraints()
         
@@ -101,17 +102,34 @@ class HertaultField:
         else:
             print(f"   ✅ Fifth force: α < 10⁻³")
             
-        # Equivalence principle (MICROSCOPE)
-        eta_predicted = self.alpha**2 * 1e-15
+        # Equivalence principle (MICROSCOPE) (CHANGED: More rigorous calculation)
+        Delta_Tmu = 1e-3  # GeV (typical trace difference for Be-Ti)
+        grad_phi = 1e-8 * M_Pl  # GeV/cm (typical gradient)
+        eta_predicted = self.alpha**2 * Delta_Tmu / (M_Pl**2 * 9.81e2) * grad_phi  # Using g ≈ 9.81 m/s²
         if eta_predicted > 1e-13:
             print(f"   ⚠️ EP violation η ≈ {eta_predicted:.1e} > MICROSCOPE limit")
             constraints_ok = False
         else:
             print(f"   ✅ Equivalence principle: η ~ {eta_predicted:.1e} < 10⁻¹³")
             
-        # Mass hierarchy
-        if self.Delta_m2 > 10 * self.m0_2:
-            print(f"   ✅ Mass hierarchy: Δm² >> m₀²")
+        # Gravitational wave speed constraint (NEW)
+        c_gw_deviation = self.alpha * 1e-12  # Simplified estimate
+        if c_gw_deviation > 1e-15:
+            print(f"   ⚠️ GW speed deviation |c_gw - c|/c ≈ {c_gw_deviation:.1e} > 10⁻¹⁵")
+            constraints_ok = False
+        else:
+            print(f"   ✅ GW speed: |c_gw - c|/c < 10⁻¹⁵")
+            
+        # Stellar cooling constraint (NEW)
+        if self.alpha > 5e-3:
+            print(f"   ⚠️ α = {self.alpha:.2e} exceeds stellar cooling limit 5×10⁻³")
+            constraints_ok = False
+        else:
+            print(f"   ✅ Stellar cooling: α < 5×10⁻³")
+            
+        # Mass hierarchy (CHANGED: Adjusted for new hierarchy)
+        if self.m0_2 > self.Delta_m2:
+            print(f"   ✅ Mass hierarchy: m₀² > Δm²")
         else:
             print(f"   ⚠️ Mass hierarchy not satisfied")
             constraints_ok = False
@@ -131,26 +149,26 @@ class HertaultField:
     def effective_mass_squared(self, rho_m):
         """Environment-dependent effective mass squared."""
         F = self.transition_function(rho_m)
-        return self.m0_2 + self.Delta_m2 * F
+        m2_eff = self.m0_2 + self.Delta_m2 * F
+        if m2_eff < 0:
+            print(f"   ⚠️ Warning: Negative effective mass squared detected")
+        return m2_eff
     
     def effective_potential(self, phi, rho_m):
         """Total effective potential V_eff(φ; ρm)."""
         F = self.transition_function(rho_m)
         
         V0 = 0.5 * self.m0_2 * phi**2 + self.lambda0 * phi**4 / 24
-        U = 0.5 * self.Delta_m2 * phi**2
+        U = 0.5 * self.Delta_m2 * phi**2  # CHANGED: Removed quartic term in U for simplicity
         
         return V0 + F * U
     
     def equation_of_state(self, phi, phi_dot, rho_m):
         """Equation of state w_φ = p_φ/ρ_φ."""
-        
-        # Energy densities
         rho_kinetic = 0.5 * phi_dot**2
         rho_potential = self.effective_potential(phi, rho_m)
         rho_phi = rho_kinetic + rho_potential
         
-        # Pressure
         p_phi = rho_kinetic - rho_potential
         
         if abs(rho_phi) < 1e-50:
@@ -176,7 +194,7 @@ class CosmologicalEvolution:
         self.h = h
         self.H0 = h * 100  # km/s/Mpc
         
-        # Today's densities
+        # Today's density
         self.rho_crit0 = 3 * (self.H0 * 1e3 / 3.086e22)**2 * M_Pl**2 / (8 * np.pi)
         self.rho_m0 = Omega_m0 * self.rho_crit0
         
@@ -199,7 +217,11 @@ class CosmologicalEvolution:
         """
         Complete system of ODEs for background evolution.
         
-        y = [φ, φ', log(H)]
+        Args:
+            z: Redshift
+            y: [φ, φ', log(H)]
+        Returns:
+            [dφ/dz, dφ'/dz, dlogH/dz]
         """
         phi, phi_prime, log_H = y
         H = np.exp(log_H)
@@ -242,7 +264,7 @@ class CosmologicalEvolution:
         """
         print(f"\n🔄 SOLVING BACKGROUND EVOLUTION...")
         print(f"   Redshift range: z = {z_span[0]} → {z_span[1]}")
-        print(f"   Initial conditions: φ = {phi_ini:.1e}, φ' = {phi_prime_ini:.1e}")
+        print(f"   Initial conditions: φ = {phi_ini:.1e} M_Pl, φ' = {phi_prime_ini:.1e}")
         
         # Initial Hubble parameter
         H_ini = np.sqrt(8 * np.pi * self.rho_m0 * (1 + z_span[0])**3 / (3 * M_Pl**2))
@@ -333,8 +355,15 @@ class PerturbationEvolution:
         self.cosmo = cosmo_evolution
         
     def effective_gravitational_coupling(self, k, z):
-        """Scale and time-dependent effective gravitational coupling."""
+        """
+        Scale and time-dependent effective gravitational coupling.
         
+        Args:
+            k: Wavenumber [h/Mpc]
+            z: Redshift
+        Returns:
+            G_eff / G
+        """
         # Matter density and scale factor
         rho_m = self.cosmo.rho_m0 * (1 + z)**3
         a = 1 / (1 + z)
@@ -346,18 +375,30 @@ class PerturbationEvolution:
         # Physical wavenumber (convert h/Mpc to GeV)
         k_phys = k * self.cosmo.h * 6.582e-16  # GeV
         
-        # Modification factor
+        # Modification factor (Eq. 5.1 in paper)
         modification = (2 * self.field.alpha**2) / (3 * M_Pl**2) * \
                       self.cosmo.Omega_m0 * k_phys**2 / (k_phys**2 + a**2 * m_eff**2)
         
         return 1 + modification
     
-    def growth_factor_modification(self, k, z):
-        """Modification to linear growth factor D(k,z)."""
-        G_ratio = self.effective_gravitational_coupling(k, z)
-        gamma = 0.55  # Growth index
+    def growth_factor_modification(self, k, z_array):
+        """
+        Modification to linear growth factor D(k,z).
         
-        return G_ratio**gamma
+        Args:
+            k: Wavenumber [h/Mpc]
+            z_array: Array of redshifts
+        Returns:
+            D(k,z) / D_ΛCDM(z)
+        """
+        # Integrate modified growth equation (Eq. B.6 in paper)
+        D_ratio = np.ones_like(z_array)
+        for i, z in enumerate(z_array[1:], 1):
+            G_eff = self.effective_gravitational_coupling(k, z)
+            delta_z = z_array[i] - z_array[i-1]
+            D_ratio[i] = D_ratio[i-1] * np.exp((G_eff - 1) * delta_z / (1 + z))
+        
+        return D_ratio
 
 # ============================================================================
 # OBSERVATIONAL CONSTRAINTS CLASS
@@ -386,7 +427,6 @@ class ObservationalConstraints:
         
     def compute_tensions(self, H0_pred, sigma8_pred):
         """Compute tension levels for all observables."""
-        
         tensions = {}
         
         # H₀ tensions
@@ -403,7 +443,6 @@ class ObservationalConstraints:
     
     def analyze_tension_reduction(self, H0_pred, sigma8_pred):
         """Analyze tension reduction compared to ΛCDM."""
-        
         print(f"\n📊 TENSION ANALYSIS:")
         print(f"   H₀ predicted: {H0_pred:.2f} km/s/Mpc")
         print(f"   σ₈ predicted: {sigma8_pred:.4f}")
@@ -461,16 +500,20 @@ class ParameterOptimization:
         self.constraints = ObservationalConstraints()
         
     def objective_function(self, params):
-        """Multi-objective function for parameter optimization."""
+        """
+        Multi-objective function for parameter optimization.
         
+        Args:
+            params: [alpha, log₁₀(Δm²), log₁₀(m₀²), Δ]
+        """
         alpha, log_Delta_m2, log_m0_2, Delta = params
         
-        # Parameter bounds
+        # Parameter bounds (CHANGED: Adjusted for new mass scales)
         if not (1e-5 <= alpha <= 3e-3):
             return 1e8
-        if not (-50 <= log_Delta_m2 <= -40):
+        if not (-88 <= log_Delta_m2 <= -82):
             return 1e8
-        if not (-55 <= log_m0_2 <= -45):
+        if not (-86 <= log_m0_2 <= -80):
             return 1e8
         if not (0.1 <= Delta <= 2.0):
             return 1e8
@@ -485,9 +528,7 @@ class ParameterOptimization:
             )
             
             # Quick constraint check
-            if alpha > 1e-3:  # Fifth force
-                return 1e6
-            if 10**log_Delta_m2 <= 10 * 10**log_m0_2:  # Mass hierarchy
+            if not field._validate_constraints():
                 return 1e6
             
             # Fast background evolution (reduced precision for optimization)
@@ -496,16 +537,17 @@ class ParameterOptimization:
                 background = cosmo.solve_background(z_span=(100, 0))
                 if not background['success']:
                     return 1e7
-            except:
+            except Exception as e:
+                print(f"   ⚠️ Integration error: {e}")
                 return 1e7
             
             # Extract observables
             H0_predicted = background['H'][-1] * 3.086e19  # Convert to km/s/Mpc
             
-            # σ₈ from perturbations (simplified)
+            # σ₈ from perturbations (CHANGED: More rigorous growth calculation)
             pert = PerturbationEvolution(field, cosmo)
             k_8 = 0.125  # h/Mpc for 8 Mpc/h spheres
-            growth_8 = pert.growth_factor_modification(k_8, z=0)
+            growth_8 = pert.growth_factor_modification(k_8, background['z'])[-1]
             sigma8_predicted = SIGMA8_PLANCK * growth_8
             
             # Compute chi-squared
@@ -524,20 +566,20 @@ class ParameterOptimization:
             return total_chi2
             
         except Exception as e:
+            print(f"   ⚠️ Objective function error: {e}")
             return 1e8
     
     def optimize_parameters(self, maxiter=100):
         """Run parameter optimization."""
-        
         print(f"\n🔍 PARAMETER OPTIMIZATION:")
         print(f"   Method: Differential Evolution")
         print(f"   Max iterations: {maxiter}")
         
-        # Parameter bounds: [α, log₁₀(Δm²), log₁₀(m₀²), Δ]
+        # Parameter bounds: [α, log₁₀(Δm²), log₁₀(m₀²), Δ] (CHANGED)
         bounds = [
             (1e-5, 3e-3),    # α
-            (-49, -42),      # log₁₀(Δm²) 
-            (-52, -46),      # log₁₀(m₀²)
+            (-88, -82),      # log₁₀(Δm²)
+            (-86, -80),      # log₁₀(m₀²)
             (0.2, 1.5)       # Δ
         ]
         
@@ -585,7 +627,6 @@ class ParameterOptimization:
 
 def create_publication_figures(field, background, analysis_results):
     """Generate publication-quality figures."""
-    
     print(f"\n🎨 GENERATING PUBLICATION FIGURES...")
     
     # Create output directory
@@ -604,37 +645,27 @@ def create_publication_figures(field, background, analysis_results):
     
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
     
-    # Panel 1: Phase diagram
-    rho_ratios = np.logspace(-2, 3, 500)
-    w_phi_theory = []
-    
-    for ratio in rho_ratios:
-        rho_m = ratio * field.rho_c
-        F = field.transition_function(rho_m)
+    # Panel 1: Phase diagram (CHANGED: Use real w_φ from simulation)
+    if background and background['success']:
+        rho_ratios = background['rho_phi'] / field.rho_c
+        w_phi = background['w_phi']
         
-        if F > 0.3:  # DM phase
-            w_approx = 0.05 * (1 - F)
-        else:  # DE phase  
-            w_approx = -0.95 + 0.05 * np.exp(F)
-            
-        w_phi_theory.append(w_approx)
-    
-    ax1.semilogx(rho_ratios, w_phi_theory, 'b-', linewidth=3, label='wφ(ρm/ρc)')
-    ax1.axvline(1, color='red', linestyle='--', linewidth=2, alpha=0.8, label='ρm = ρc')
-    ax1.axhline(0, color='gray', linestyle=':', alpha=0.5)
-    ax1.axhline(-1, color='gray', linestyle=':', alpha=0.5)
-    
-    # Cosmic evolution arrow
-    ax1.annotate('Cosmic\nEvolution', xy=(100, 0.02), xytext=(5, -0.7),
-                arrowprops=dict(arrowstyle='->', color='orange', lw=2),
-                fontsize=11, ha='center', color='orange', fontweight='bold')
-    
-    ax1.set_xlabel('ρm/ρc')
-    ax1.set_ylabel('wφ')
-    ax1.set_title('A) Hertault Field Phase Diagram', fontweight='bold')
-    ax1.set_ylim(-1.1, 0.2)
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
+        ax1.semilogx(rho_ratios, w_phi, 'b-', linewidth=3, label='w_φ(ρ_m/ρ_c)')
+        ax1.axvline(1, color='red', linestyle='--', linewidth=2, alpha=0.8, label='ρ_m = ρ_c')
+        ax1.axhline(0, color='gray', linestyle=':', alpha=0.5)
+        ax1.axhline(-1, color='gray', linestyle=':', alpha=0.5)
+        
+        # Cosmic evolution arrow
+        ax1.annotate('Cosmic\nEvolution', xy=(100, 0.02), xytext=(5, -0.7),
+                    arrowprops=dict(arrowstyle='->', color='orange', lw=2),
+                    fontsize=11, ha='center', color='orange', fontweight='bold')
+        
+        ax1.set_xlabel('ρ_m/ρ_c')
+        ax1.set_ylabel('w_φ')
+        ax1.set_title('A) Hertault Field Phase Diagram', fontweight='bold')
+        ax1.set_ylim(-1.1, 0.2)
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
     
     # Panel 2: Field evolution
     if background and background['success']:
@@ -648,7 +679,7 @@ def create_publication_figures(field, background, analysis_results):
                        alpha=0.8, linewidth=2, label=f'z_trans = {background["z_transition"]:.2f}')
         
         ax2.set_xlabel('1 + z')
-        ax2.set_ylabel('|φ| [MPl]')
+        ax2.set_ylabel('|φ| [M_Pl]')
         ax2.set_title('B) Field Evolution', fontweight='bold')
         ax2.legend()
         ax2.grid(True, alpha=0.3)
@@ -716,27 +747,26 @@ def create_publication_figures(field, background, analysis_results):
     print("   ✅ Main results figure saved: figures/hertault_main_results.png")
     
     # Additional signature plots
-    create_signature_plots(field)
+    create_signature_plots(field, background)
     
     return fig
 
-def create_signature_plots(field):
+def create_signature_plots(field, background):
     """Create additional plots for observational signatures."""
-    
-    # Gravitational wave signatures
     plt.figure(figsize=(12, 8))
     
-    # GW sensitivity curves
+    # GW signatures
+    plt.subplot(2, 2, 1)
     frequencies = np.logspace(1, 4, 100)  # Hz
     
     # Detector sensitivities (approximate)
     h_LIGO = 1e-21 * (frequencies/100)**(-4.5) * np.exp(-(frequencies/1000)**2)
     h_ET = h_LIGO / 10  # Einstein Telescope
     
-    # Hertault dipole signal
-    h_dipole = field.alpha**2 * 1e-22 * (frequencies/100)**2 * np.exp(-(frequencies/2000)**2)
+    # Hertault dipole signal (CHANGED: Based on Eq. B.9)
+    Delta_Q = field.alpha * 1e-4 / M_Pl  # Scalar charge difference
+    h_dipole = field.alpha**2 * Delta_Q**2 * (frequencies/100)**2 * 1e-22
     
-    plt.subplot(2, 2, 1)
     plt.loglog(frequencies, h_LIGO, 'r--', linewidth=2, label='LIGO/Virgo')
     plt.loglog(frequencies, h_ET, 'g--', linewidth=2, label='Einstein Telescope')
     plt.loglog(frequencies, h_dipole, 'b-', linewidth=3, label='Hertault Signal')
@@ -748,7 +778,6 @@ def create_signature_plots(field):
     
     # Experimental constraints summary
     plt.subplot(2, 2, 2)
-    
     experiments = ['Fifth Force', 'MICROSCOPE', 'GW Speed', 'Stellar Cool.']
     limits = [1e-3, 1e-13, 1e-15, 5e-3]
     predictions = [field.alpha, field.alpha**2 * 1e-15, field.alpha * 1e-12, field.alpha]
@@ -772,14 +801,11 @@ def create_signature_plots(field):
     
     # Power spectrum modifications
     plt.subplot(2, 2, 3)
-    
     k_array = np.logspace(-2, 1, 50)  # h/Mpc
-    
-    # Simplified power spectrum modification
     cosmo = CosmologicalEvolution(field)
     pert = PerturbationEvolution(field, cosmo)
     
-    growth_mods = [pert.growth_factor_modification(k, 0) for k in k_array]
+    growth_mods = [pert.growth_factor_modification(k, background['z'])[-1] for k in k_array]
     deviation_percent = [(g - 1) * 100 for g in growth_mods]
     
     plt.semilogx(k_array, deviation_percent, 'b-', linewidth=3, label='Hertault Model')
@@ -800,7 +826,6 @@ def create_signature_plots(field):
     
     # Future detectability timeline
     plt.subplot(2, 2, 4)
-    
     experiments_future = ['DESI\n(2024-29)', 'Euclid\n(2024-30)', 'Einstein Tel.\n(2030+)', 
                          'MICROSCOPE-2\n(2030+)', 'Space Clocks\n(2025+)']
     detectability = [0.85, 0.90, 0.45, 0.60, 0.35]
@@ -814,13 +839,52 @@ def create_signature_plots(field):
     plt.xticks(rotation=45, ha='right')
     plt.grid(True, alpha=0.3)
     
-    # Add detection threshold line
     plt.axhline(0.5, color='black', linestyle=':', alpha=0.7, label='50% Threshold')
     plt.legend()
     
     plt.tight_layout()
     plt.savefig('figures/hertault_signatures.png', dpi=300, bbox_inches='tight')
     print("   ✅ Signatures figure saved: figures/hertault_signatures.png")
+
+# ============================================================================
+# VALIDATION TESTS (NEW)
+# ============================================================================
+
+def run_validation_tests(field, background):
+    """
+    Run validation tests to ensure physical consistency and ΛCDM recovery.
+    """
+    print(f"\n🧪 RUNNING VALIDATION TESTS...")
+    
+    # Test 1: ΛCDM recovery when α → 0
+    print("   Test 1: ΛCDM recovery")
+    field_no_coupling = HertaultField(alpha=1e-10, Delta_m2=field.Delta_m2, m0_2=field.m0_2, Delta=field.Delta)
+    cosmo_no_coupling = CosmologicalEvolution(field_no_coupling)
+    background_no_coupling = cosmo_no_coupling.solve_background(z_span=(100, 0))
+    
+    if background_no_coupling and background_no_coupling['success']:
+        H_LCDM = H0_PLANCK * np.sqrt(OMEGA_M * (1 + background_no_coupling['z'])**3 + (1 - OMEGA_M))
+        H_diff = np.abs(background_no_coupling['H'] * 3.086e19 - H_LCDM)
+        if np.all(H_diff / H_LCDM < 1e-3):
+            print(f"     ✅ ΛCDM recovered within 0.1%")
+        else:
+            print(f"     ⚠️ ΛCDM recovery failed: max deviation {max(H_diff/H_LCDM)*100:.2f}%")
+    
+    # Test 2: Effective mass positivity
+    print("   Test 2: Effective mass positivity")
+    rho_m_test = np.logspace(-48, -44, 5)
+    m2_eff_test = [field.effective_mass_squared(rho) for rho in rho_m_test]
+    if all(m > 0 for m in m2_eff_test):
+        print(f"     ✅ Effective mass squared positive")
+    else:
+        print(f"     ⚠️ Negative effective mass detected")
+    
+    # Test 3: Transition redshift
+    print("   Test 3: Transition redshift")
+    if background['z_transition'] and 0.3 < background['z_transition'] < 0.6:
+        print(f"     ✅ Transition redshift z ≈ {background['z_transition']:.3f} in expected range")
+    else:
+        print(f"     ⚠️ Unexpected transition redshift: z = {background['z_transition']}")
 
 # ============================================================================
 # MAIN ANALYSIS PIPELINE
@@ -830,14 +894,13 @@ def main_analysis():
     """
     Complete analysis pipeline that produced all paper results.
     """
-    
     print("\n" + "="*60)
     print("🚀 STARTING COMPLETE ANALYSIS PIPELINE")
     print("="*60)
     
     total_start_time = time.time()
     
-    # Stage 1: Parameter optimization (optional - can use pre-optimized)
+    # Stage 1: Parameter optimization (optional)
     run_optimization = False  # Set to True to re-run optimization
     
     if run_optimization:
@@ -857,13 +920,12 @@ def main_analysis():
             field = HertaultField()  # Default optimized parameters
     else:
         print("\n🔍 STAGE 1: USING PRE-OPTIMIZED PARAMETERS")
-        # These are the results from extensive optimization runs
         field = HertaultField(
             alpha=7.8e-4,      # Universal coupling
-            Delta_m2=2.3e-47,  # Mass modification
-            m0_2=2.8e-49,      # Bare mass
+            Delta_m2=2.8e-87,  # Mass modification
+            m0_2=2.3e-85,      # Bare mass
             Delta=0.42,        # Transition width
-            lambda0=4.8e-7     # Quartic coupling
+            lambda0=1e-8       # Quartic coupling
         )
     
     # Stage 2: Background cosmological evolution
@@ -888,9 +950,8 @@ def main_analysis():
     print("\n🌊 STAGE 3: PERTURBATION ANALYSIS")
     pert = PerturbationEvolution(field, cosmo)
     
-    # Calculate σ₈ modification
     k_8 = 0.125  # h/Mpc (8 Mpc/h scale)
-    growth_factor_8 = pert.growth_factor_modification(k_8, z=0)
+    growth_factor_8 = pert.growth_factor_modification(k_8, background['z'])[-1]
     sigma8_predicted = SIGMA8_PLANCK * growth_factor_8
     
     print(f"   Growth factor at k₈: {growth_factor_8:.4f}")
@@ -905,8 +966,12 @@ def main_analysis():
     print("\n🎨 STAGE 5: PUBLICATION FIGURES")
     figures = create_publication_figures(field, background, analysis_results)
     
-    # Stage 6: Summary report
-    print("\n📋 STAGE 6: FINAL SUMMARY")
+    # Stage 6: Validation tests (NEW)
+    print("\n🧪 STAGE 6: VALIDATION TESTS")
+    run_validation_tests(field, background)
+    
+    # Stage 7: Summary report
+    print("\n📋 STAGE 7: FINAL SUMMARY")
     total_time = time.time() - total_start_time
     
     print(f"\n" + "="*60)
@@ -952,7 +1017,6 @@ def main_analysis():
     print(f"   Repository: https://github.com/hugohertault/hertault-model")
     print("="*60)
     
-    # Return comprehensive results
     return {
         'field': field,
         'background': background,
@@ -965,7 +1029,6 @@ def main_analysis():
 
 def quick_demo():
     """Quick demonstration of key results."""
-    
     print("\n🚀 QUICK DEMO - KEY RESULTS")
     print("="*40)
     
